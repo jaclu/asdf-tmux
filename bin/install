@@ -30,10 +30,23 @@ load_configure_options() {
     set +a
 }
 
+clear_tmux_work_folder() {
+    # clearing out work directory
+    [[ -z "$tmp_download_dir" ]] && {
+        echo "ERRORL clear_tmux_work_folder() undefined: tmp_download_dir"
+        exit 1
+    }
+    [[ -z "$version" ]]  && {
+        echo "ERRORL clear_tmux_work_folder() undefined: version"
+        exit 1
+    }
+    rm "$tmp_download_dir/tmux-${version}" -rf || exit
+}
+
 install_tmux() {
     local version=$1
     local install_path=$2
-    local concurrency=$3
+    local concurrency=${3:-1}
     local tmp_download_dir
     local source_path
 
@@ -48,6 +61,7 @@ install_tmux() {
     echo "$source_path"
     download_source_file "$version" "$source_path"
 
+    echo "><> download completed"
     # running this in subshell
     # we don't want to disturb current working dir
     (
@@ -56,7 +70,9 @@ install_tmux() {
             exit 1
         fi
 
+        clear_tmux_work_folder
         unzip -q "$source_path" -d "$tmp_download_dir" || exit 1
+        echo "><> unzip done"
 
         cd "$tmp_download_dir/tmux-${version}" || exit
 
@@ -73,11 +89,12 @@ install_tmux() {
         ./configure "$(construct_configure_options)" CFLAGS="-I${install_path}/include" LDFLAGS="-L${install_path}/lib -Wl,-rpath,$install_path/lib"
         make -j "$concurrency" && make install
     )
+    clear_tmux_work_folder
 }
 
 install_libevent() {
     local install_path=$1
-    local concurrency=$2
+    local concurrency=${2:-1}
     local tmp_download_dir
 
     if [[ "$TMPDIR" = "" ]]; then
@@ -132,6 +149,12 @@ else
     echo "><> libevent-dev package is installed, no need to install separately"
     echo
 fi
+
+
+#echo "ASDF_INSTALL_VERSION [$ASDF_INSTALL_VERSION]"
+#echo "ASDF_INSTALL_PATH [$ASDF_INSTALL_PATH]"
+#echo "ASDF_CONCURRENCY [$ASDF_CONCURRENCY]"
+#exit 1
 
 # shellcheck disable=SC2154
 install_tmux "$ASDF_INSTALL_VERSION" "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
