@@ -37,10 +37,16 @@ clear_tmux_work_folder() {
         exit 1
     }
     [[ -z "$version" ]]  && {
-        echo "ERRORL clear_tmux_work_folder() undefined: version"
+        echo "ERROR: clear_tmux_work_folder() undefined: version"
         exit 1
     }
-    rm "$tmp_download_dir/tmux-${version}" -rf || exit
+    _d="$tmp_download_dir/tmux-${version}"
+    [[ -d "$_d" ]] && {
+        rm -rf  || {
+            echo "ERROR: clear_tmux_work_folder() failed to remove: $_d"
+            exit 1
+        }
+    }
 }
 
 install_tmux() {
