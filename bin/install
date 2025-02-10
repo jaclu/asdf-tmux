@@ -32,6 +32,8 @@ load_configure_options() {
 
 clear_tmux_work_folder() {
     # clearing out work directory
+
+    #echo "><> clear_tmux_work_folder()"
     [[ -z "$tmp_download_dir" ]] && {
         echo "ERRORL clear_tmux_work_folder() undefined: tmp_download_dir"
         exit 1
@@ -42,7 +44,7 @@ clear_tmux_work_folder() {
     }
     _d="$tmp_download_dir/tmux-${version}"
     [[ -d "$_d" ]] && {
-        rm -rf  || {
+        rm -rf "$_d" || {
             echo "ERROR: clear_tmux_work_folder() failed to remove: $_d"
             exit 1
         }
@@ -67,7 +69,7 @@ install_tmux() {
     echo "$source_path"
     download_source_file "$version" "$source_path"
 
-    echo "><> download completed"
+    #echo "><> download completed"
     # running this in subshell
     # we don't want to disturb current working dir
     (
@@ -84,6 +86,8 @@ install_tmux() {
 
         scr_autogen="./autogen.sh"
         if [[ -f "$scr_autogen" ]]; then
+            # at least 1.5 & 1.6 is not runable by default
+            chmod 0755 "$scr_autogen"
             "$scr_autogen"
         else
             echo
@@ -93,9 +97,9 @@ install_tmux() {
 
         # install_path=$install_path
         ./configure "$(construct_configure_options)" CFLAGS="-I${install_path}/include" LDFLAGS="-L${install_path}/lib -Wl,-rpath,$install_path/lib"
-        make -j "$concurrency" && make install
+        # if build / deploy fails, dont erase work folder
+        make -j "$concurrency" && make install &&  clear_tmux_work_folder
     )
-    clear_tmux_work_folder
 }
 
 install_libevent() {
