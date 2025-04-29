@@ -5,6 +5,6 @@
 ## Install
 
 ```
-asdf plugin-add tmux https://github.com/aphecetche/asdf-tmux.git
+asdf plugin add tmux https://github.com/jaclu/asdf-tmux.git
 asdf install tmux <version>
 ```
