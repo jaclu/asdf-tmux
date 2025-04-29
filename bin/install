@@ -96,7 +96,9 @@ install_tmux() {
         fi
 
         # install_path=$install_path
-        ./configure "$(construct_configure_options)" CFLAGS="-I${install_path}/include" LDFLAGS="-L${install_path}/lib -Wl,-rpath,$install_path/lib"
+        ./configure "$(construct_configure_options)" \
+                    CFLAGS="-I${install_path}/include" \
+                    LDFLAGS="-L${install_path}/lib -Wl,-rpath,$install_path/lib"
         # if build / deploy fails, dont erase work folder
         make -j "$concurrency" && make install &&  clear_tmux_work_folder
     )
@@ -116,6 +118,7 @@ install_libevent() {
 
     libevent_version="2.1.10"
 
+    # shellcheck disable=SC2154
     curl -LO "https://github.com/libevent/libevent/releases/download/release-${libevent_version}-stable/libevent-${libevent_version}-stable.tar.gz"
     tar -zxf libevent-"${libevent_version}"-stable.tar.gz
     cd libevent-"${libevent_version}"-stable || exit
@@ -152,19 +155,20 @@ get_download_url() {
 }
 
 if [[ ! -f /usr/include/event.h ]]; then
-    # shellcheck disable=SC2154
-    install_libevent "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
+    d_homebrew_libevent="$(brew --prefix libevent 2>/dev/null)"
+    if  [[ -z "$d_homebrew_libevent" ]] || [[ ! -d "$d_homebrew_libevent" ]]; then
+        # shellcheck disable=SC2154
+        install_libevent "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
+    else
+        echo
+        echo "><> homebrew libevent found, no need to install libevent from source"
+        echo
+    fi
 else
     echo
     echo "><> libevent-dev package is installed, no need to install separately"
     echo
 fi
-
-
-#echo "ASDF_INSTALL_VERSION [$ASDF_INSTALL_VERSION]"
-#echo "ASDF_INSTALL_PATH [$ASDF_INSTALL_PATH]"
-#echo "ASDF_CONCURRENCY [$ASDF_CONCURRENCY]"
-#exit 1
 
 # shellcheck disable=SC2154
 install_tmux "$ASDF_INSTALL_VERSION" "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
