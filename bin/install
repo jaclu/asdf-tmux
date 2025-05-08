@@ -80,7 +80,6 @@ install_tmux() {
 
         clear_tmux_work_folder
         unzip -q "$source_path" -d "$tmp_download_dir" || exit 1
-        echo "><> unzip done"
 
         cd "$tmp_download_dir/tmux-${version}" || exit
 
@@ -95,10 +94,13 @@ install_tmux() {
             echo
         fi
 
+        extra_opts=""
+        [[ "$(uname)" = "Darwin" ]] && extra_opts="--enable-utf8proc"
+
         # install_path=$install_path
         ./configure "$(construct_configure_options)" \
                     CFLAGS="-I${install_path}/include" \
-                    LDFLAGS="-L${install_path}/lib -Wl,-rpath,$install_path/lib"
+                    LDFLAGS="-L${install_path}/lib -Wl,-rpath,$install_path/lib" "$extra_opts"
         # if build / deploy fails, dont erase work folder
         make -j "$concurrency" && make install &&  clear_tmux_work_folder
     )
@@ -137,7 +139,7 @@ download_source_file() {
     local download_url
 
     download_url=$(get_download_url "$version")
-    echo "><> will download: $download_url"
+    # echo "><> will download: $download_url"
     curl -Lo "$download_path" -C - "$download_url"
 }
 
@@ -161,12 +163,12 @@ if [[ ! -f /usr/include/event.h ]]; then
         install_libevent "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
     else
         echo
-        echo "><> homebrew libevent found, no need to install libevent from source"
+        echo "---  homebrew libevent found, no need to install libevent from source  ---"
         echo
     fi
 else
     echo
-    echo "><> libevent-dev package is installed, no need to install separately"
+    echo "---  libevent-dev package is installed, no need to install separately  ---"
     echo
 fi
 
