@@ -38,7 +38,7 @@ clear_tmux_work_folder() {
         echo "ERRORL clear_tmux_work_folder() undefined: tmp_download_dir"
         exit 1
     }
-    [[ -z "$version" ]]  && {
+    [[ -z "$version" ]] && {
         echo "ERROR: clear_tmux_work_folder() undefined: version"
         exit 1
     }
@@ -99,10 +99,10 @@ install_tmux() {
 
         # install_path=$install_path
         ./configure "$(construct_configure_options)" \
-                    CFLAGS="-I${install_path}/include" \
-                    LDFLAGS="-L${install_path}/lib -Wl,-rpath,$install_path/lib" "$extra_opts"
+            CFLAGS="-I${install_path}/include" \
+            LDFLAGS="-L${install_path}/lib -Wl,-rpath,$install_path/lib" "$extra_opts"
         # if build / deploy fails, dont erase work folder
-        make -j "$concurrency" && make install &&  clear_tmux_work_folder
+        make -j "$concurrency" && make install && clear_tmux_work_folder
     )
 }
 
@@ -158,7 +158,7 @@ get_download_url() {
 
 if [[ ! -f /usr/include/event.h ]]; then
     d_homebrew_libevent="$(brew --prefix libevent 2>/dev/null)"
-    if  [[ -z "$d_homebrew_libevent" ]] || [[ ! -d "$d_homebrew_libevent" ]]; then
+    if [[ -z "$d_homebrew_libevent" ]] || [[ ! -d "$d_homebrew_libevent" ]]; then
         # shellcheck disable=SC2154
         install_libevent "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
     else
