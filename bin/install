@@ -1,176 +1,20 @@
 #!/usr/bin/env bash
 
-construct_configure_options() {
-    load_configure_options
+set -euo pipefail
 
-    # shellcheck disable=SC2154
-    if [[ "$TMUX_CONFIGURE_OPTIONS" = "" ]]; then
-        local configure_options="--prefix=$install_path"
-
-        if [[ "$TMUX_EXTRA_CONFIGURE_OPTIONS" != "" ]]; then
-            configure_options="$configure_options $TMUX_EXTRA_CONFIGURE_OPTIONS"
-        fi
-    else
-        local configure_options="$TMUX_CONFIGURE_OPTIONS --prefix=$install_path"
-    fi
-
-    echo "$configure_options"
+d_brew=$(brew --prefix 2>/dev/null)
+[[ -n "$d_brew" ]] && [[ -d "$d_brew" ]] && {
+    # Needed for tmux < 3.4 on MacOS..., seemingly harmless for newer versions
+    export CPPFLAGS="-I/$d_brew/include"
+    export LDFLAGS="-L/$d_brew/lib"
 }
 
-load_configure_options() {
-    local asdf_tmux_configure_options="${HOME}/.asdf-tmux-configure-options"
+current_script_path=${BASH_SOURCE[0]}
+plugin_dir=$(dirname "$(dirname "$current_script_path")")
 
-    if [[ ! -r "$asdf_tmux_configure_options" ]]; then
-        return
-    fi
+# shell check source=lib/utils.bash
+# shellcheck source=/dev/null
+source "${plugin_dir}/lib/utils.bash"
 
-    set -a
-    # shellcheck source=/dev/null
-    source "$asdf_tmux_configure_options"
-    set +a
-}
-
-clear_tmux_work_folder() {
-    # clearing out work directory
-
-    #echo "><> clear_tmux_work_folder()"
-    [[ -z "$tmp_download_dir" ]] && {
-        echo "ERRORL clear_tmux_work_folder() undefined: tmp_download_dir"
-        exit 1
-    }
-    [[ -z "$version" ]] && {
-        echo "ERROR: clear_tmux_work_folder() undefined: version"
-        exit 1
-    }
-    _d="$tmp_download_dir/tmux-${version}"
-    [[ -d "$_d" ]] && {
-        rm -rf "$_d" || {
-            echo "ERROR: clear_tmux_work_folder() failed to remove: $_d"
-            exit 1
-        }
-    }
-}
-
-install_tmux() {
-    local version=$1
-    local install_path=$2
-    local concurrency=${3:-1}
-    local tmp_download_dir
-    local source_path
-
-    if [[ "$TMPDIR" = "" ]]; then
-        tmp_download_dir=$(mktemp -d -t tmux_build_XXXXXX)
-    else
-        tmp_download_dir=$TMPDIR
-    fi
-
-    # path to the tar file
-    source_path=$(get_download_file_path "$version" "$tmp_download_dir")
-    echo "$source_path"
-    download_source_file "$version" "$source_path"
-
-    #echo "><> download completed"
-    # running this in subshell
-    # we don't want to disturb current working dir
-    (
-        if ! type "unzip" &>/dev/null; then
-            echo "ERROR: unzip not found"
-            exit 1
-        fi
-
-        clear_tmux_work_folder
-        unzip -q "$source_path" -d "$tmp_download_dir" || exit 1
-
-        cd "$tmp_download_dir/tmux-${version}" || exit
-
-        scr_autogen="./autogen.sh"
-        if [[ -f "$scr_autogen" ]]; then
-            # at least 1.5 & 1.6 is not runable by default
-            chmod 0755 "$scr_autogen"
-            "$scr_autogen"
-        else
-            echo
-            echo "><> No $scr_autogen found, skipping"
-            echo
-        fi
-
-        extra_opts=""
-        [[ "$(uname)" = "Darwin" ]] && extra_opts="--enable-utf8proc"
-
-        # install_path=$install_path
-        ./configure "$(construct_configure_options)" \
-            CFLAGS="-I${install_path}/include" \
-            LDFLAGS="-L${install_path}/lib -Wl,-rpath,$install_path/lib" "$extra_opts"
-        # if build / deploy fails, dont erase work folder
-        make -j "$concurrency" && make install && clear_tmux_work_folder
-    )
-}
-
-install_libevent() {
-    local install_path=$1
-    local concurrency=${2:-1}
-    local tmp_download_dir
-
-    if [[ "$TMPDIR" = "" ]]; then
-        tmp_download_dir=$(mktemp -d -t tmux_build_XXXXXX)
-    else
-        tmp_download_dir=$TMPDIR
-    fi
-    cd "$tmp_download_dir" || echo "ERROR: Failed to cd $tmp_download_dir"
-
-    libevent_version="2.1.10"
-
-    # shellcheck disable=SC2154
-    curl -LO "https://github.com/libevent/libevent/releases/download/release-${libevent_version}-stable/libevent-${libevent_version}-stable.tar.gz"
-    tar -zxf libevent-"${libevent_version}"-stable.tar.gz
-    cd libevent-"${libevent_version}"-stable || exit
-    ./configure --prefix="$install_path"
-
-    if make -j "$concurrency"; then
-        make install
-    else
-        exit 2
-    fi
-}
-
-download_source_file() {
-    local version=$1
-    local download_path=$2
-    local download_url
-
-    download_url=$(get_download_url "$version")
-    # echo "><> will download: $download_url"
-    curl -Lo "$download_path" -C - "$download_url"
-}
-
-get_download_file_path() {
-    local version=$1
-    local tmp_download_dir=$2
-
-    echo "$tmp_download_dir/tmux-${version}.zip"
-}
-
-get_download_url() {
-    local version=$1
-
-    echo "https://github.com/tmux/tmux/archive/${version}.zip"
-}
-
-if [[ ! -f /usr/include/event.h ]]; then
-    d_homebrew_libevent="$(brew --prefix libevent 2>/dev/null)"
-    if [[ -z "$d_homebrew_libevent" ]] || [[ ! -d "$d_homebrew_libevent" ]]; then
-        # shellcheck disable=SC2154
-        install_libevent "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
-    else
-        echo
-        echo "---  homebrew libevent found, no need to install libevent from source  ---"
-        echo
-    fi
-else
-    echo
-    echo "---  libevent-dev package is installed, no need to install separately  ---"
-    echo
-fi
-
-# shellcheck disable=SC2154
-install_tmux "$ASDF_INSTALL_VERSION" "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
+# shellcheck disable=SC2154 # the ASDF_ variables are defined via asdf
+install_version "$ASDF_INSTALL_TYPE" "$ASDF_INSTALL_VERSION" "$ASDF_INSTALL_PATH"
