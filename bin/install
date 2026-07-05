@@ -166,6 +166,16 @@ termux_libevent_installed() {
     [[ -f /data/data/com.termux/files/usr/include/event2/event.h ]]
 }
 
+# shellcheck disable=SC2154
+{
+    echo
+    echo "=====   asdf build params   ====="
+    echo "ASDF_INSTALL_VERSION: $ASDF_INSTALL_VERSION"
+    echo "ASDF_INSTALL_PATH:    $ASDF_INSTALL_PATH"
+    echo "ASDF_CONCURRENCY:     $ASDF_CONCURRENCY"
+    echo
+}
+
 if [[ ! -f /usr/include/event.h ]]; then
     if brew_libevent_installed; then
         echo
