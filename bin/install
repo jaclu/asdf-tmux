@@ -156,15 +156,28 @@ get_download_url() {
     echo "https://github.com/tmux/tmux/archive/${version}.zip"
 }
 
-if [[ ! -f /usr/include/event.h ]]; then
+brew_libevent_installed() {
     d_homebrew_libevent="$(brew --prefix libevent 2>/dev/null)"
-    if [[ -z "$d_homebrew_libevent" ]] || [[ ! -d "$d_homebrew_libevent" ]]; then
-        # shellcheck disable=SC2154
-        install_libevent "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
-    else
+    [[ -n "$d_homebrew_libevent" ]] && [[ -d "$d_homebrew_libevent" ]]
+}
+
+termux_libevent_installed() {
+    [[ "$HOME" = /data/data/com.termux/files/home ]] || return 1 # not termux
+    [[ -f /data/data/com.termux/files/usr/include/event2/event.h ]]
+}
+
+if [[ ! -f /usr/include/event.h ]]; then
+    if brew_libevent_installed; then
         echo
         echo "---  homebrew libevent found, no need to install libevent from source  ---"
         echo
+    elif termux_libevent_installed; then
+        echo
+        echo "---  Termux libevent found, no need to install libevent from source  ---"
+        echo
+    else
+        # shellcheck disable=SC2154
+        install_libevent "$ASDF_INSTALL_PATH" "$ASDF_CONCURRENCY"
     fi
 else
     echo
